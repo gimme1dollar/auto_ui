@@ -25,6 +25,7 @@ class T5ForMultimodalGeneration(T5ForConditionalGeneration):
 
     def __init__(self, config: T5Config, img_dim, num_actions=12):
         super().__init__(config)
+        self.config = config
         self.model_dim = config.d_model
         
 
@@ -228,3 +229,102 @@ class T5ForMultimodalGeneration(T5ForConditionalGeneration):
         result['targets'] = targets
 
         return result
+    
+    def encode(
+        self,
+        input_ids: Optional[torch.LongTensor] = None,
+        image_ids=None,
+        attention_mask: Optional[torch.FloatTensor] = None,
+        decoder_input_ids: Optional[torch.LongTensor] = None,
+        decoder_attention_mask: Optional[torch.BoolTensor] = None,
+        head_mask: Optional[torch.FloatTensor] = None,
+        decoder_head_mask: Optional[torch.FloatTensor] = None,
+        cross_attn_head_mask: Optional[torch.Tensor] = None,
+        encoder_outputs: Optional[Tuple[Tuple[torch.Tensor]]] = None,
+        past_key_values: Optional[Tuple[Tuple[torch.Tensor]]] = None,
+        inputs_embeds: Optional[torch.FloatTensor] = None,
+        decoder_inputs_embeds: Optional[torch.FloatTensor] = None,
+        labels: Optional[torch.LongTensor] = None,
+        use_cache: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        return_dict: Optional[bool] = None,
+    ) -> Union[Tuple[torch.FloatTensor], Seq2SeqLMOutput]:
+        use_cache = use_cache if use_cache is not None else self.config.use_cache
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+
+        # FutureWarning: head_mask was separated into two input args - head_mask, decoder_head_mask
+        if head_mask is not None and decoder_head_mask is None:
+            if self.config.num_layers == self.config.num_decoder_layers:
+                warnings.warn(__HEAD_MASK_WARNING_MSG, FutureWarning)
+                decoder_head_mask = head_mask
+
+        # Encode if needed (training, first prediction pass)
+        if encoder_outputs is None:
+            # Convert encoder inputs in embeddings if needed
+            encoder_outputs = self.encoder(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                inputs_embeds=inputs_embeds,
+                head_mask=head_mask,
+                output_attentions=output_attentions,
+                output_hidden_states=output_hidden_states,
+                return_dict=return_dict,
+            )
+
+        elif return_dict and not isinstance(encoder_outputs, BaseModelOutput):
+            encoder_outputs = BaseModelOutput(
+                last_hidden_state=encoder_outputs[0],
+                hidden_states=encoder_outputs[1] if len(encoder_outputs) > 1 else None,
+                attentions=encoder_outputs[2] if len(encoder_outputs) > 2 else None,
+            )
+
+        hidden_states = encoder_outputs[0]
+        
+        return hidden_states
+    
+    def decode(
+        self,
+        hidden_states,
+        input_ids: Optional[torch.LongTensor] = None,
+        image_ids=None,
+        attention_mask: Optional[torch.FloatTensor] = None,
+        decoder_input_ids: Optional[torch.LongTensor] = None,
+        decoder_attention_mask: Optional[torch.BoolTensor] = None,
+        head_mask: Optional[torch.FloatTensor] = None,
+        decoder_head_mask: Optional[torch.FloatTensor] = None,
+        cross_attn_head_mask: Optional[torch.Tensor] = None,
+        encoder_outputs: Optional[Tuple[Tuple[torch.Tensor]]] = None,
+        past_key_values: Optional[Tuple[Tuple[torch.Tensor]]] = None,
+        inputs_embeds: Optional[torch.FloatTensor] = None,
+        decoder_inputs_embeds: Optional[torch.FloatTensor] = None,
+        labels: Optional[torch.LongTensor] = None,
+        use_cache: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        return_dict: Optional[bool] = None,
+    ) -> Union[Tuple[torch.FloatTensor], Seq2SeqLMOutput]:
+        use_cache = use_cache if use_cache is not None else self.config.use_cache
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+
+        # Decode
+        decoder_outputs = self.decoder(
+            input_ids=decoder_input_ids,
+            attention_mask=decoder_attention_mask,
+            inputs_embeds=decoder_inputs_embeds,
+            past_key_values=past_key_values,
+            encoder_hidden_states=hidden_states,
+            encoder_attention_mask=attention_mask,
+            head_mask=decoder_head_mask,
+            cross_attn_head_mask=cross_attn_head_mask,
+            use_cache=use_cache,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+
+        sequence_output = decoder_outputs[0]
+
+        lm_logits = self.lm_head(sequence_output)
+        
+        return lm_logits
