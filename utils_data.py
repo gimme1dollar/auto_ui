@@ -24,25 +24,28 @@ def load_data(args, split):
     source_image = []
     anno_positions = []
 
-    if args.all_data:
-        if split == "train":
-            data = []
-            for subdir in ["general", "google_apps", "install", "single", "web_shopping"]:
-                print(f"loading {subdir}", len(data))
-                with open(f"dataset/blip/{subdir}_{args.data_root}_{split}.obj", "rb") as rp:
-                    sub_data = pickle.load(rp)
-                if subdir == "google_apps":
-                    sub_data = random.sample(sub_data, int(len(sub_data) * args.all_data))
-                data.extend(sub_data)
-        else:
-            # we use general subset for dev/test
-            with open(f"{args.eval_subset}_{split}.obj", "rb") as rp:
-                    data = pickle.load(rp)
-    else:
-        with open(f"{args.data_root}_{split}.obj", "rb") as rp:
-            data = pickle.load(rp)
-            if args.data_ratio:
-                data = random.sample(data, int(len(data) * args.data_ratio))
+    # if args.all_data:
+    #     if split == "train":
+    #         data = []
+    #         for subdir in ["general"]:#, "google_apps", "install", "single", "web_shopping"]:
+    #             print(f"loading {subdir}", len(data))
+    #             with open(f"{data_dir}/{subdir}_{args.data_root}_{split}.obj", "rb") as rp:
+    #                 sub_data = pickle.load(rp)
+    #             if subdir == "google_apps":
+    #                 sub_data = random.sample(sub_data, int(len(sub_data) * args.all_data))
+    #             data.extend(sub_data)
+    #     else:
+    #         # we use general subset for dev/test
+    #         with open(f"{args.eval_subset}_{split}.obj", "rb") as rp:
+    #                 data = pickle.load(rp)
+    # else:
+    #     with open(f"{args.data_root}_{split}.obj", "rb") as rp:
+    #         data = pickle.load(rp)
+    #         if args.data_ratio:
+    #             data = random.sample(data, int(len(data) * args.data_ratio))
+
+    with open(f"{args.data_root}_{split}.obj", "rb") as rp:
+        data = pickle.load(rp)
 
     for qid, episode in enumerate(tqdm(data)):
         episode_id = episode["episode_id"]
