@@ -2,11 +2,13 @@ from torch.utils.data import Dataset
 import torch
 import pickle
 from tqdm import tqdm
-import action_matching, action_type
 import numpy as np
 import jax.numpy as jnp
 import random
 import re
+
+from auto_ui import action_matching, action_type
+
 img_shape = {
     "resnet": (512, 2048),
     "clip": (49, 2048),

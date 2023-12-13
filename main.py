@@ -13,8 +13,8 @@ from rich.table import Column, Table
 from rich import box
 from rich.console import Console
 console = Console(record=True)
-import action_matching, action_type
 import evaluate
+from auto_ui import action_matching, action_type
 
 def parse_args():
     parser = argparse.ArgumentParser()
